@@ -6,6 +6,10 @@ if [[ "$LMOD_SYSTEM_NAME" == "perlmutter" ]]; then
     module load python/3.13
 fi
 
+if [[ "$(echo $LMOD_ROOT | awk -F'/' '{print $3}')" == "soft.computecanada.ca" ]]; then
+    module load python/3.13
+fi
+
 basedir=$PWD
 
 mkdir _install

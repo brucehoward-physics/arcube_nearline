@@ -4,6 +4,10 @@ if [[ "$LMOD_SYSTEM_NAME" == "perlmutter" ]]; then
     module load python/3.13
 fi
 
+if [[ "$(echo $LMOD_ROOT | awk -F'/' '{print $3}')" == "soft.computecanada.ca" ]]; then
+    module load python/3.13
+fi
+
 source _install/nearline.venv/bin/activate
 
 export FW_CONFIG_FILE=$(realpath config/FW_config.yaml)
