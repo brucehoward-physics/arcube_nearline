@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+## Example command to submit this job:
+# justin simple-workflow \
+#     --wall-seconds 1200 \
+#     --output-pattern '*.hdf5' \
+#     --scope usertests \
+#     --lifetime-days 7 \
+#     --image fnal-wn-el9:9.7 \
+#     --mql "files from neardet-2x2-lar-light:neardet-2x2-lar-light_70011 limit 1" \
+#     --env ND_NEARLINE_TAG=test_simple_noStream \
+#     --env ND_NEARLINE_SCRIPTS_DIR=$ND_NEARLINE_SCRIPTS_DIR \
+#     --jobscript flow_light_data.jobscript
+
+source "$ND_NEARLINE_SCRIPTS_DIR/ndproto_nearline/justin/setup.inc.sh"
+
+output_fname=$(basename "$input_fname" .data).${ND_NEARLINE_TAG}.FLOW.hdf5
+
+python "$(which metacat)" file show -mj "$did" > "${input_fname}.json"
+ls -l
+
+# Run3 is using _Run2.yaml
+workflow='yamls/proto_nd_flow/workflows/light/light_event_building_mpd_Run2.yaml'
+
+xrdcp "$pfn" .
+input_file=$PWD/$input_fname
+output_file=$PWD/$output_fname
+
+# pushd $env_dir/ndlar_flow
+pushd /cvmfs/fifeuser4.opensciencegrid.org/sw/dune/10bba04d514dee870f62ce342ca5dddeace41a9a/ndlar_flow
+python -m h5flow -c "$workflow" -i "$input_file" -o "$output_file"
+popd
+
+python $scripts_dir/ndproto_nearline/justin/dump_metadata.light_flow.py \
+    "${input_fname}.json" "${output_fname}"
+
+echo "$did" > /home/workspace/justin-processed-dids.txt

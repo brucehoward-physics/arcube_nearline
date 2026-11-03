@@ -1,0 +1,90 @@
+* Building the SW env
+** env
+#+begin_src  bash
+pixi global install rattler-build rattler-index
+mkdir -p ../conda-channel/noarch
+rattler-index fs ../conda-channel
+mkdir ../conda-recipes
+cd ../conda-recipes/
+pixi exec grayskull pypi https://github.com/larpix/adc64format
+pixi exec grayskull pypi https://github.com/DUNE/h5flow
+pixi exec grayskull pypi https://github.com/DUNE/ndlar_flow
+rattler-build build --recipe adc64format/recipe.yaml --test skip --recipe adc64format/recipe.yaml --output-dir ../conda-channel -c conda-forge
+rattler-build build --recipe h5flow/recipe.yaml --test skip --recipe adc64format/recipe.yaml --output-dir ../conda-channel -c conda-forge
+rattler-build build --recipe ndlar_flow/recipe.yaml --test skip --recipe adc64format/recipe.yaml --output-dir ../conda-channel -c conda-forge
+pixi init nearline_2x2
+cd nearline_2x2
+pixi add 'python=3.14.*'
+realpath ../../conda-channel/
+pixi add adc64format
+pixi add h5flow
+pixi add ndlar_flow
+pixi add matplotlib awkward emoji pandas
+pixi pack
+cd somewhere
+pixi exec pixi-unpack /path/to/environment.tar
+# clean up (see below)
+tar cf env.tar env
+justin-cvmfs-upload env.tar
+
+#+end_src
+*** clean up
+#+begin_src bash
+for f in env/bin/*; do
+  [ -f "$f" ] && [ ! -L "$f" ] || continue
+  if head -n 1 "$f" | grep -q '^#!'"$(pwd)/env/bin/python.*"; then
+    echo "$f"
+    sed -i '1s|^#!.*|#!/usr/bin/env python3|' "$f"
+  fi
+done
+#+end_src
+** scripts
+
+Scripts:
+#+begin_src bash
+#+end_src
+
+* Authenticating to MetaCat
+metacat auth login -m token $USER
+token is taken from e.g. =/run/$UID/bt_u$UID= to update ~/.token_library
+
+* Monitoring ingest / declaration daemons
+** Web interface
+#+begin_src bash
+ssh -L 8096:duneingestgpvm01:8096 -L 8080:dunedecladgpvm01:8080 dunegpvm01.fnal.gov
+#+end_src
+Then point browser to http://localhost:8096/fts-light/charts and http://localhost:8080/declad_demo/charts
+** Log files
+*** ingestd
+See =/exp/dune/app/home/dunepro/2x2_Minerva/ingestd_production/mover.log=
+*** declad
+See =/exp/dune/app/home/dunepro/declad_py311/logs=
+*** Those aren't being updated?
+Log in to duneingestgpvm01 and/or dunedecladgpvm01 and use =ps= to see what's actually running.
+
+* Hosting the nearline_uploader
+Just run nearline_uploader.py in a directory containing =justin_eec_trusted.crt=, =server.crt=, =server.key=
+
+* Uploading plots
+** On the grid
+See uploader/upload_test.jobscript
+
+** On a GPVM
+#+begin_src bash
+hello=hello_gpvm_run3.text
+echo "Hello from $(hostname)!" > $hello
+
+# temporary till the lab signs a new deal with sectigo
+cacert=/cvmfs/fifeuser1.opensciencegrid.org/sw/dune/e95c8a256a0133d467c5257ad7555de9cd9937a6/labpix.crt
+auth=(--cacert "$cacert" --cert "/tmp/x509up_u$UID" --key "/tmp/x509up_u$UID" )
+
+curl "${auth[@]}" --upload-file $hello https://labpix.lbl.gov:55556/$hello
+#+end_src
+
+* Serving plots
+On labpix: nginx running on port 12257
+root is =/var/www/html=
+e.g. /plots
+
+* Submitting workflows
+see jobscript
